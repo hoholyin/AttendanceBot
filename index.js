@@ -1,12 +1,29 @@
-var TelegramBot = require('node-telegram-bot-api');
+const TelegramBot = require('node-telegram-bot-api');
 const API_TOKEN = process.env.TOKEN; 
 const telegram = new TelegramBot(API_TOKEN, { polling: true });
+
+const {google} = require('googleapis');
+const fs = require('fs');
+const readline = require('readline');
+const promisify = require('es6-promisify');
+
+const TOKEN_PATH = 'token.json';
+const SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly'];
+const sheets = google.sheets('v4');
+const SHEET_ID = "1_tNYZINkyw9PItP4PXEulnmggCW6-NY98wKpIuUk3pY";
+
+const PRESENT = 1;
+
+let values = [[PRESENT]];
+let resource = {
+  values,
+};
 
 telegram.on("text", (msg) => {
   if (msg.text == "/start") {
     sendWelcomeMessage(msg);
   } else {
-    telegram.sendMessage(msg.chat.id, "You said: " + msg.text);
+    markAsPresent(msg);
   }
 });
 
@@ -20,4 +37,19 @@ function sendWelcomeMessage(msg) {
   } catch (error) {
     console.log(error);
   }
+}
+
+function markAsPresent(msg) {
+  sheets.spreadsheets.values.update({
+    SHEET_ID,
+    "Results!O4",
+    "RAW",
+    resource
+  }, (err, result) => {
+    if (err) {
+      console.log(err);
+    } else {
+      telegram.sendMessage(msg.chat.id, "Attendance updated!");
+    }
+  });
 }

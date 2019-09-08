@@ -10,6 +10,8 @@
   "author": "Ho Hol Yin",
   "license": "ISC",
   "dependencies": {
+    "es6-promisify": "^6.0.2",
+    "googleapis": "^39.2.0",
     "node-telegram-bot-api": "^0.30.0"
   }
 }
