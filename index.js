@@ -41,10 +41,10 @@ function sendWelcomeMessage(msg) {
 
 function markAsPresent(msg) {
   sheets.spreadsheets.values.update({
-    SHEET_ID,
-    "Results!O4",
-    "RAW",
-    resource
+    spreadsheetId: SHEET_ID,
+    range: "Results!O4",
+    valueInputOption: "RAW",
+    valuies: resource
   }, (err, result) => {
     if (err) {
       console.log(err);
