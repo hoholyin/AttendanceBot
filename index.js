@@ -11,8 +11,9 @@ telegram.on("text", (msg) => {
 });
 
 function sendWelcomeMessage(msg) {
-  let welcomeMessage = "Greetings from NUS Attendance Bot!\n";
-  welcomeMessage += "Submit your attendance using the following format:\n";
-  welcomeMessage += "MODULE_CODE/MATRIC_NO/TOKEN";
+  let welcomeMessage = "Greetings from NUS Attendance Bot!\n\n";
+  welcomeMessage += "Submit your attendance using the following format:\n\n";
+  welcomeMessage += "MODULE_CODE/MATRIC_NO/TOKEN\n\n";
+  welcomeMessage += "Eg: CS2040/A0123456L/PEASOUP\n";
   telegram.sendMessage(msg.chat.id, welcomeMessage);
 }
