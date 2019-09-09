@@ -1,4 +1,4 @@
 .env
-*.json
 !package.json
 /node_modules/
+auth.json
