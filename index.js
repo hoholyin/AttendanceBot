@@ -40,11 +40,11 @@ telegram.on("text", (msg) => {
         const classNo = values[1];
         const studentNo = values[2];
         const inputToken = values[3];
-        if (module !== "CS2040") {
+        if (module.toUpperCase() !== "CS2040") {
           sendMessage(msg, "Course not found!");
           return;
         }
-        if (classNo !== "LAB3") {
+        if (classNo.toUpperCase() !== "LAB3") {
           sendMessage(msg, "Class not found!");
           return;
         }
@@ -56,7 +56,7 @@ telegram.on("text", (msg) => {
         }, (err, result) => {
           const token = result.data.values[0][0];
           const lab = result.data.values[0][1];
-          if (inputToken !== token) {
+          if (inputToken.toUpperCase() !== token) {
             sendMessage(msg, "No such token!");
             return;
           }
@@ -70,7 +70,7 @@ telegram.on("text", (msg) => {
             spreadsheetId: SHEET_ID,
             range: ATTENDANCE_COL + LAB_MAP[lab] + row,
           }, (err, result) => {
-            if (result.data.values[0][0] == "1") {
+            if (result.data.values !== undefined) {
               sendMessage(msg, "Attendance already marked!");
               return;
             }
