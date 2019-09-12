@@ -12,14 +12,13 @@ const sheets = google.sheets('v4');
 const SHEET_ID = "1_tNYZINkyw9PItP4PXEulnmggCW6-NY98wKpIuUk3pY";
 const MATRIC_NUMBER = "CS2040 Lab3 Attendance!B4:B45";
 const LAB_MAP = ["", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"]
-const LAB_NO = LAB_MAP[3]; //Input lab number here 
 const ATTENDANCE_COL = "CS2040 Lab3 Attendance!";
-const TOKEN_RANGE = "CS2040 Lab3 Attendance!P4";
+const TOKEN_LAB_RANGE = "CS2040 Lab3 Attendance!P4:Q4";
 
 const PRESENT = "1";
 
 telegram.on("text", (msg) => {
-  if (msg.text == "/start") {
+  if (msg.text == "/start" || msg.text == "/help") {
     sendWelcomeMessage(msg);
   } else {
     jwt.authorize((err, response) => {
@@ -33,14 +32,19 @@ telegram.on("text", (msg) => {
           return;
         }
         const values = msg.text.split("/");
-        if (values.length !== 3) {
-          sendMessage(msg, "Wrong format!");
+        if (values.length !== 4) {
+          sendMessage(msg, "Wrong format! Type /help for more information.");
           return;
         }
         const module = values[0];
-        const studentNo = values[1];
-        const inputToken = values[2];
+        const classNo = values[1];
+        const studentNo = values[2];
+        const inputToken = values[3];
         if (module !== "CS2040") {
+          sendMessage(msg, "Course not found!");
+          return;
+        }
+        if (classNo !== "LAB3") {
           sendMessage(msg, "Class not found!");
           return;
         }
@@ -48,32 +52,43 @@ telegram.on("text", (msg) => {
         sheets.spreadsheets.values.get({
           auth: jwt,
           spreadsheetId: SHEET_ID,
-          range: TOKEN_RANGE,
+          range: TOKEN_LAB_RANGE,
         }, (err, result) => {
           const token = result.data.values[0][0];
+          const lab = result.data.values[0][1];
           if (inputToken !== token) {
             sendMessage(msg, "No such token!");
             return;
           }
-          const row = getRow(values[1], matricNos);
+          const row = getRow(studentNo, matricNos);
           if (row === -1) {
             sendMessage(msg, "Student not found!");
             return;
           }
-          sheets.spreadsheets.values.update({
+          sheets.spreadsheets.values.get({
             auth: jwt,
             spreadsheetId: SHEET_ID,
-            range: ATTENDANCE_COL + LAB_NO + row,
-            valueInputOption: "USER_ENTERED",
-            resource: {
-              values: [[PRESENT]]
-            }
+            range: ATTENDANCE_COL + LAB_MAP[lab] + row,
           }, (err, result) => {
-            if (err) {
-              console.log('The API returned an error: ' + err);
+            if (result.data.values[0][0] == "1") {
+              sendMessage(msg, "Attendance already marked!");
               return;
             }
-            sendMessage(msg, "Attendance marked!");
+            sheets.spreadsheets.values.update({
+              auth: jwt,
+              spreadsheetId: SHEET_ID,
+              range: ATTENDANCE_COL + LAB_MAP[lab] + row,
+              valueInputOption: "USER_ENTERED",
+              resource: {
+                values: [[PRESENT]]
+              }
+            }, (err, result) => {
+              if (err) {
+                console.log('The API returned an error: ' + err);
+                return;
+              }
+              sendMessage(msg, "Attendance marked!");
+            })
           });
         })
      })
@@ -93,8 +108,8 @@ function sendWelcomeMessage(msg) {
   try {
     let welcomeMessage = "Greetings from NUS Attendance Bot!\n";
     welcomeMessage += "Submit your attendance using the following format:\n\n";
-    welcomeMessage += "MODULE_CODE/MATRIC_NO/TOKEN\n";
-    welcomeMessage += "Eg: CS2040/A0123456L/PEASOUP\n";
+    welcomeMessage += "MODULE_CODE/CLASS_NO/MATRIC_NO/TOKEN\n";
+    welcomeMessage += "Eg: CS2040/LAB1/A0123456L/PEASOUP\n";
     telegram.sendMessage(msg.chat.id, welcomeMessage);
   } catch (error) {
     console.log(error);
