@@ -15,7 +15,7 @@ const sheets = google.sheets('v4');
 
 //Google sheets
 const SHEET_ID = "1_tNYZINkyw9PItP4PXEulnmggCW6-NY98wKpIuUk3pY";
-const MATRIC_NUMBER = "CS2040 Lab3 Attendance!B4:B45";
+const MATRIC_NUMBER = "CS2040 Lab3 Attendance!B4:B48";
 const LAB_MAP = ["", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"]
 const ATTENDANCE_COL = "CS2040 Lab3 Attendance!";
 const TOKEN_LAB_RANGE = "CS2040 Lab3 Attendance!P4:Q4";
