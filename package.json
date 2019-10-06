@@ -10,7 +10,7 @@
   "author": "Ho Hol Yin",
   "license": "ISC",
   "dependencies": {
-    "es6-promisify": "^6.0.2",
+    "express": "^4.17.1",
     "google-auth-library": "^5.2.1",
     "googleapis": "^39.2.0",
     "node-telegram-bot-api": "^0.30.0"

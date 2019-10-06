@@ -19,8 +19,25 @@ const ATTENDANCE_COL = "CS2040 Lab3 Attendance!";
 const TOKEN_LAB_RANGE = "CS2040 Lab3 Attendance!P4:Q4";
 const NAME_MATRIC_RANGE = "CS2040 Lab3 Attendance!A1:B1";
 
+//Express
+const http = require('http');
+const express = require('express');
+const app = express();
+
 const PRESENT = "1";
 
+//To keep telegram bot active
+app.get("/", (request, response) => {
+  console.log(Date.now() + " Ping Received");
+  response.sendStatus(200);
+});
+
+app.listen(process.env.PORT);
+setInterval(() => {
+  http.get('https://hoholyin-attendancebot.glitch.me/');
+}, 280000);
+
+//Logic here
 telegram.on("text", (msg) => {
   if (msg.text == "/start" || msg.text == "/help") {
     sendWelcomeMessage(msg);
