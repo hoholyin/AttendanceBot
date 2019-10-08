@@ -2,6 +2,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const API_TOKEN = process.env.TOKEN;
 const telegram = new TelegramBot(API_TOKEN, { polling: true });
+const PASSWORD = process.env.PASSWORD;
 
 //JWT
 const {JWT} = require('google-auth-library');
@@ -42,6 +43,11 @@ telegram.on("text", (msg) => {
   if (msg.text == "/start" || msg.text == "/help") {
     sendWelcomeMessage(msg);
   } else if (msg.text.split("/")[0] == "startclass") {
+    const inputPassword = msg.text.split("/")[2];
+    if (inputPassword != PASSWORD) {
+      sendMessage(msg, "Unauthorised action.");
+      return;
+    }
     const token = msg.text.split("/")[1];
     sheets.spreadsheets.values.batchGet({
       "auth": jwt,
@@ -69,7 +75,12 @@ telegram.on("text", (msg) => {
       updateToken(msg, token);
       return;
     })
-  } else if (msg.text == "close") {
+  } else if (msg.text.split("/")[0] == "close") {
+    const inputPassword = msg.text.split("/")[1];
+    if (inputPassword != PASSWORD) {
+      sendMessage(msg, "Unauthorised action.");
+      return;
+    }
     sheets.spreadsheets.values.batchGet({
       auth: jwt,
       spreadsheetId: SHEET_ID,
@@ -106,11 +117,6 @@ telegram.on("text", (msg) => {
     })
   } else {
     jwt.authorize((err, response) => {
-      const started = checkIfClassStarted();
-      if (!started) {
-        sendMessage(msg, "The class has not started yet.");
-        return;
-      }
       sheets.spreadsheets.values.get({
         auth: jwt,
         spreadsheetId: SHEET_ID,
@@ -276,7 +282,7 @@ function updateToken(msg, token) {
       console.log('The API returned an error: ' + err);
       return;
     }
-    sendMessage(msg, "Token set as: " + token);
+    sendMessage(msg, "Token set as: " + token.toUpperCase());
   })
 }
 
@@ -315,9 +321,7 @@ function checkIfClassStarted() {
       range: "O4:O4",
   }, (err, result) => {
     const ongoing = result.data.values[0][0] == 'started';
-    if (!ongoing) {
-      return false;
-    }
+    return ongoing;
   })
 }
 
