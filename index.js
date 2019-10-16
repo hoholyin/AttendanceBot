@@ -82,9 +82,9 @@ telegram.on("text", (msg) => {
       return;
     }
     sheets.spreadsheets.values.batchGet({
-      auth: jwt,
-      spreadsheetId: SHEET_ID,
-      ranges: [
+      "auth": jwt,
+      "spreadsheetId": SHEET_ID,
+      "ranges": [
         "O4:O4",
         TOKEN_LAB_RANGE
       ] 
@@ -100,9 +100,9 @@ telegram.on("text", (msg) => {
     })
   } else if (msg.text == "/check") {
     sheets.spreadsheets.values.batchGet({
-      auth: jwt,
-      spreadsheetId: SHEET_ID,
-      ranges: [
+      "auth": jwt,
+      "spreadsheetId": SHEET_ID,
+      "ranges": [
         "O4:O4",
         TOKEN_LAB_RANGE
       ] 
@@ -118,9 +118,9 @@ telegram.on("text", (msg) => {
   } else {
     jwt.authorize((err, response) => {
       sheets.spreadsheets.values.get({
-        auth: jwt,
-        spreadsheetId: SHEET_ID,
-        range: MATRIC_NUMBERS,
+        "auth": jwt,
+        "spreadsheetId": SHEET_ID,
+        "range": MATRIC_NUMBERS,
       }, (err, result) => {
         if (err) {
           console.log('The API returned an error: ' + err);
@@ -150,9 +150,9 @@ telegram.on("text", (msg) => {
           return;
         }
         sheets.spreadsheets.values.get({
-          auth: jwt,
-          spreadsheetId: SHEET_ID,
-          range: TOKEN_LAB_RANGE,
+          "auth": jwt,
+          "spreadsheetId": SHEET_ID,
+          "range": TOKEN_LAB_RANGE,
         }, (err, result) => {
           const token = result.data.values[0][0];
           const lab = result.data.values[0][1];
@@ -161,9 +161,9 @@ telegram.on("text", (msg) => {
             return;
           }
           sheets.spreadsheets.values.get({
-            auth: jwt,
-            spreadsheetId: SHEET_ID,
-            range: ATTENDANCE_COL + "A" + row + ":" + LAB_MAP[lab] + row,
+            "auth": jwt,
+            "spreadsheetId": SHEET_ID,
+            "range" : ATTENDANCE_COL + "A" + row + ":" + LAB_MAP[lab] + row,
           }, (err, result) => {
             if (result.data.values == undefined) {
               console.log(studentNo);
@@ -176,11 +176,11 @@ telegram.on("text", (msg) => {
               return;
             }
             sheets.spreadsheets.values.update({
-              auth: jwt,
-              spreadsheetId: SHEET_ID,
-              range: ATTENDANCE_COL + LAB_MAP[lab] + row,
-              valueInputOption: "USER_ENTERED",
-              resource: {
+              "auth": jwt,
+              "spreadsheetId": SHEET_ID,
+              "range": ATTENDANCE_COL + LAB_MAP[lab] + row,
+              "valueInputOption": "USER_ENTERED",
+              "resource": {
                 values: [[PRESENT]]
               }
             }, (err, result) => {
