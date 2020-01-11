@@ -14,11 +14,12 @@ const jwt = new JWT(key.client_email, null, key.private_key, scope);
 const {google} = require('googleapis');
 const sheets = google.sheets('v4');
 const SHEET_ID = "1_tNYZINkyw9PItP4PXEulnmggCW6-NY98wKpIuUk3pY";
-const MATRIC_NUMBERS = "CS2040 Lab3 Attendance!B4:B"; 
-const STUDENTS = "CS2040 Lab3 Attendance!A4:A"; 
+const MATRIC_NUMBERS = "CS2040 Lab Attendance!B4:B";
 const LAB_MAP = ["", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O"]
-const ATTENDANCE_COL = "CS2040 Lab3 Attendance!";
-const TOKEN_LAB_RANGE = "CS2040 Lab3 Attendance!P4:Q4";
+const ATTENDANCE_COL = "CS2040 Lab Attendance!";
+const TOKEN_LAB_RANGE = "CS2040 Lab Attendance!P4:Q4";
+const NAME_RANGE = "CS2040 Lab Attendance!A4:A";
+const CLASS_STATUS_RANGE = "CS2040 Lab Attendance!O4:O4";
 
 //Express
 const http = require('http');
@@ -42,21 +43,26 @@ setInterval(() => {
 telegram.on("text", (msg) => {
   if (msg.text == "/start" || msg.text == "/help") {
     sendWelcomeMessage(msg);
-  } else if (msg.text.split("/")[0] == "startclass") {
-    const inputPassword = msg.text.split("/")[2];
+  } else if (msg.text.split("/")[0] == "start") {
+    const inputPassword = msg.text.split("/")[3];
+    const inputClassNo = msg.text.split("/")[1];
     if (inputPassword != PASSWORD) {
       sendMessage(msg, "Unauthorised action.");
       return;
     }
-    const token = msg.text.split("/")[1];
+    if (!isValidClassNo(inputClassNo)) {
+      sendMessage(msg, "Invalid class number.");
+      return;
+    }
+    const token = msg.text.split("/")[2];
     sheets.spreadsheets.values.batchGet({
       "auth": jwt,
       "spreadsheetId": SHEET_ID,
       "majorDimension": "COLUMNS",
       "ranges": [
-        TOKEN_LAB_RANGE,
-        "A4:A",
-        "O4:O4"
+        specifyLab(TOKEN_LAB_RANGE, inputClassNo),
+        specifyLab(NAME_RANGE, inputClassNo),
+        specifyLab(CLASS_STATUS_RANGE, inputClassNo)
       ]
     }, (err, result) => {
       const lab = result.data.valueRanges[0].values[1][0];
@@ -68,25 +74,32 @@ telegram.on("text", (msg) => {
         return;
       }
       // start class, initialise everyone's field to be '-'
-      initAttendance(msg, lab, initArray);
+      initAttendance(msg, lab, initArray, inputClassNo);
       // update classStarted to true on spreadsheet
-      setClassTo(msg, 'started');
+      setClassTo(msg, 'started', inputClassNo);
       // update Token on spreadsheet
-      updateToken(msg, token);
+      updateToken(msg, token, inputClassNo);
       return;
     })
   } else if (msg.text.split("/")[0] == "close") {
-    const inputPassword = msg.text.split("/")[1];
+    const inputClassNo = msg.text.split("/")[1];
+    const inputPassword = msg.text.split("/")[2];
+
     if (inputPassword != PASSWORD) {
       sendMessage(msg, "Unauthorised action.");
       return;
     }
+    if (!isValidClassNo(inputClassNo)) {
+      sendMessage(msg, "Invalid class number.");
+      return;
+    }
+
     sheets.spreadsheets.values.batchGet({
-      "auth": jwt,
-      "spreadsheetId": SHEET_ID,
-      "ranges": [
-        "O4:O4",
-        TOKEN_LAB_RANGE
+      auth: jwt,
+      spreadsheetId: SHEET_ID,
+      ranges: [
+        specifyLab(CLASS_STATUS_RANGE, inputClassNo),
+        specifyLab(TOKEN_LAB_RANGE, inputClassNo)
       ] 
     }, (err, result) => {
       const ongoing = result.data.valueRanges[0].values[0][0] == 'started';
@@ -95,16 +108,21 @@ telegram.on("text", (msg) => {
         sendMessage(msg, "No class ongoing.");
         return;
       }
-      finaliseAttendance(msg, lab);
-      setClassTo(msg, 'closed');
+      finaliseAttendance(msg, lab, inputClassNo);
+      setClassTo(msg, 'closed', inputClassNo);
     })
-  } else if (msg.text == "/check") {
+  } else if (msg.text.split("/")[0] == "check") {
+    const inputClassNo = msg.text.split("/")[1]
+    if (!isValidClassNo(inputClassNo)) {
+      sendMessage(msg, "Invalid class number.");
+      return;
+    }
     sheets.spreadsheets.values.batchGet({
-      "auth": jwt,
-      "spreadsheetId": SHEET_ID,
-      "ranges": [
-        "O4:O4",
-        TOKEN_LAB_RANGE
+      auth: jwt,
+      spreadsheetId: SHEET_ID,
+      ranges: [
+        specifyLab(CLASS_STATUS_RANGE, inputClassNo),
+        specifyLab(TOKEN_LAB_RANGE, inputClassNo)
       ] 
     }, (err, result) => {
       const ongoing = result.data.valueRanges[0].values[0][0] == 'started';
@@ -113,46 +131,54 @@ telegram.on("text", (msg) => {
         sendMessage(msg, "No class ongoing.");
         return;
       }
-      showAbsentees(msg, lab);
+      showAbsentees(msg, lab, inputClassNo);
     })
   } else {
+    const values = msg.text.split("/");
+    if (values.length !== 4) {
+      sendMessage(msg, "Wrong format! Type /help for more information.");
+      return;
+    }
+    const module = values[0];
+    const inputClassNo = values[1].substr(-1);
+    const studentNo = values[2];
+    const inputToken = values[3];
+    if (module.toUpperCase() !== "CS2040") {
+      sendMessage(msg, "Course not found!");
+      return;
+    }
+    if (!isValidClassNo(inputClassNo)) {
+      sendMessage(msg, "Class not found!");
+      return;
+    }
     jwt.authorize((err, response) => {
-      sheets.spreadsheets.values.get({
-        "auth": jwt,
-        "spreadsheetId": SHEET_ID,
-        "range": MATRIC_NUMBERS,
+      sheets.spreadsheets.values.batchGet({
+        auth: jwt,
+        spreadsheetId: SHEET_ID,
+        ranges: [
+          specifyLab(CLASS_STATUS_RANGE, inputClassNo),
+          specifyLab(MATRIC_NUMBERS, inputClassNo)
+        ]
       }, (err, result) => {
         if (err) {
           console.log('The API returned an error: ' + err);
           return;
         }
-        const values = msg.text.split("/");
-        if (values.length !== 4) {
-          sendMessage(msg, "Wrong format! Type /help for more information.");
-          return;
-        }
-        const module = values[0];
-        const classNo = values[1];
-        const studentNo = values[2];
-        const inputToken = values[3];
-        if (module.toUpperCase() !== "CS2040") {
-          sendMessage(msg, "Course not found!");
-          return;
-        }
-        if (classNo.toUpperCase() !== "LAB3") {
-          sendMessage(msg, "Class not found!");
-          return;
-        }
-        const matricNos = result.data.values.map(x => x[0]);
+        const ongoing = result.data.valueRanges[0].values[0][0] == 'started';
+        const matricNos = result.data.valueRanges[1].values.map(x => x[0]);
         const row = getRow(studentNo, matricNos);
+        if (!ongoing) {
+          sendMessage(msg, "No class ongoing.");
+          return;
+        }
         if (row === -1) {
           sendMessage(msg, "Student not found!");
           return;
         }
         sheets.spreadsheets.values.get({
-          "auth": jwt,
-          "spreadsheetId": SHEET_ID,
-          "range": TOKEN_LAB_RANGE,
+          auth: jwt,
+          spreadsheetId: SHEET_ID,
+          range: specifyLab(TOKEN_LAB_RANGE, inputClassNo),
         }, (err, result) => {
           const token = result.data.values[0][0];
           const lab = result.data.values[0][1];
@@ -161,9 +187,9 @@ telegram.on("text", (msg) => {
             return;
           }
           sheets.spreadsheets.values.get({
-            "auth": jwt,
-            "spreadsheetId": SHEET_ID,
-            "range" : ATTENDANCE_COL + "A" + row + ":" + LAB_MAP[lab] + row,
+            auth: jwt,
+            spreadsheetId: SHEET_ID,
+            range: specifyLab(ATTENDANCE_COL, inputClassNo) + "A" + row + ":" + LAB_MAP[lab] + row,
           }, (err, result) => {
             if (result.data.values == undefined) {
               console.log(studentNo);
@@ -176,11 +202,11 @@ telegram.on("text", (msg) => {
               return;
             }
             sheets.spreadsheets.values.update({
-              "auth": jwt,
-              "spreadsheetId": SHEET_ID,
-              "range": ATTENDANCE_COL + LAB_MAP[lab] + row,
-              "valueInputOption": "USER_ENTERED",
-              "resource": {
+              auth: jwt,
+              spreadsheetId: SHEET_ID,
+              range: specifyLab(ATTENDANCE_COL, inputClassNo) + LAB_MAP[lab] + row,
+              valueInputOption: "USER_ENTERED",
+              resource: {
                 values: [[PRESENT]]
               }
             }, (err, result) => {
@@ -226,12 +252,12 @@ function getRow(no, matricNos) {
   return -1;
 }
 
-function initAttendance(msg, lab, initArray) {
+function initAttendance(msg, lab, initArray, classNo) {
   sheets.spreadsheets.values.update({
     "auth": jwt,
     "spreadsheetId": SHEET_ID,
     "range": [
-      ATTENDANCE_COL + LAB_MAP[lab] + "4:" + LAB_MAP[lab]
+      specifyLab(ATTENDANCE_COL, classNo) + LAB_MAP[lab] + "4:" + LAB_MAP[lab]
     ],
     "valueInputOption": 'USER_ENTERED',
     "resource": {
@@ -246,12 +272,12 @@ function initAttendance(msg, lab, initArray) {
   })
 }
 
-function setClassTo(msg, state) {
+function setClassTo(msg, state, classNo) {
   sheets.spreadsheets.values.update({
     "auth": jwt,
     "spreadsheetId": SHEET_ID,
     "range": [
-      ATTENDANCE_COL + "O4:O4"
+      specifyLab(CLASS_STATUS_RANGE, classNo)
     ],
     "valueInputOption": 'USER_ENTERED',
     "resource": {
@@ -266,12 +292,12 @@ function setClassTo(msg, state) {
   })
 }
 
-function updateToken(msg, token) {
+function updateToken(msg, token, classNo) {
     sheets.spreadsheets.values.update({
     "auth": jwt,
     "spreadsheetId": SHEET_ID,
     "range": [
-      ATTENDANCE_COL + "P4:P4"
+      specifyLab(ATTENDANCE_COL, classNo) + "P4:P4"
     ],
     "valueInputOption": 'USER_ENTERED',
     "resource": {
@@ -286,11 +312,11 @@ function updateToken(msg, token) {
   })
 }
 
-function finaliseAttendance(msg, lab) {
+function finaliseAttendance(msg, lab, classNo) {
   sheets.spreadsheets.values.get({
     auth: jwt,
     spreadsheetId: SHEET_ID,
-    range: ATTENDANCE_COL + LAB_MAP[lab] + "4:" + LAB_MAP[lab],
+    range: specifyLab(ATTENDANCE_COL, classNo) + LAB_MAP[lab] + "4:" + LAB_MAP[lab],
   }, (err, result) => {
     let attendanceSheet = result.data.values;
     let finalised = attendanceSheet.map(x => x[0] == '-' ? new Array(1).fill(0) : x);
@@ -298,7 +324,7 @@ function finaliseAttendance(msg, lab) {
       "auth": jwt,
       "spreadsheetId": SHEET_ID,
       "range": [
-        ATTENDANCE_COL + LAB_MAP[lab] + "4:" + LAB_MAP[lab]
+        specifyLab(ATTENDANCE_COL, classNo) + LAB_MAP[lab] + "4:" + LAB_MAP[lab]
       ],
       "valueInputOption": 'USER_ENTERED',
       "resource": {
@@ -314,24 +340,24 @@ function finaliseAttendance(msg, lab) {
   })
 }
 
-function checkIfClassStarted() {
+function checkIfClassStarted(classNo) {
   sheets.spreadsheets.values.get({
       auth: jwt,
       spreadsheetId: SHEET_ID,
-      range: "O4:O4",
+      range: specifyLab(CLASS_STATUS_RANGE, classNo) + "O4:O4",
   }, (err, result) => {
     const ongoing = result.data.values[0][0] == 'started';
     return ongoing;
   })
 }
 
-function showAbsentees(msg, lab) {
+function showAbsentees(msg, lab, classNo) {
   sheets.spreadsheets.values.batchGet({
     auth: jwt,
     spreadsheetId: SHEET_ID,
     ranges: [
-      ATTENDANCE_COL + LAB_MAP[lab] + "4:" + LAB_MAP[lab],
-      STUDENTS,
+      specifyLab(ATTENDANCE_COL, classNo) + LAB_MAP[lab] + "4:" + LAB_MAP[lab],
+      specifyLab(NAME_RANGE, classNo),
     ]
   }, (err, result) => {
     const attendanceSheet = result.data.valueRanges[0].values;
@@ -344,4 +370,13 @@ function showAbsentees(msg, lab) {
     }
     sendMessage(msg, names);
   })
+}
+
+function specifyLab(str, labNo) {
+  return str.replace("Lab", "Lab" + labNo)
+}
+
+
+function isValidClassNo(classNo) {
+  return classNo == "1" || classNo == "8"
 }
