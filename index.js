@@ -49,10 +49,10 @@ telegram.on("text", (msg) => {
   } else if (shouldStartClass(msg)) {
     // Start class action
     // Format: start/CS2040/Lab9/token/password
-    const moduleCode = msg.text.split("/")[1];
-    const inputClassNo = msg.text.split("/")[2];
-    const token = msg.text.split("/")[3];
-    const inputPassword = msg.text.split("/")[4];
+    const moduleCode = msg.text.split("/")[1].toUpperCase();
+    const inputClassNo = msg.text.split("/")[2].toUpperCase();
+    const token = msg.text.split("/")[3].toUpperCase();
+    const inputPassword = msg.text.split("/")[4].toUpperCase();
     if (inputPassword != PASSWORD) {
       sendMessage(msg, "Unauthorised action.");
       return;
@@ -65,10 +65,11 @@ telegram.on("text", (msg) => {
     adminStartClass(msg, moduleCode, inputClassNo, inputPassword, token);
   } else if (shouldEndClass(msg)) {
     // End class action
-    // Format: close/CS2040/9/password
-    const moduleCode = msg.text.split("/")[1];
-    const inputClassNo = msg.text.split("/")[2];
-    const inputPassword = msg.text.split("/")[3];
+    // Format: close/CS2040/LAB9/password
+    // Format: close/CS1231S/TUT3/password
+    const moduleCode = msg.text.split("/")[1].toUpperCase();
+    const inputClassNo = msg.text.split("/")[2].toUpperCase();
+    const inputPassword = msg.text.split("/")[3].toUpperCase();
     if (inputPassword != PASSWORD) {
       sendMessage(msg, "Unauthorised action.");
       return;
@@ -82,8 +83,9 @@ telegram.on("text", (msg) => {
   } else if (shouldCheckClass(msg)) {
     // Check class status action
     // Format: check/CS2040/LAB9
-    const moduleCode = msg.text.split("/")[1]
-    const inputClassNo = msg.text.split("/")[2]
+    // Format: check/CS1231S/TUT3
+    const moduleCode = msg.text.split("/")[1].toUpperCase();
+    const inputClassNo = msg.text.split("/")[2].toUpperCase();
     if (!isValidClassNo(inputClassNo)) {
       sendMessage(msg, "Invalid class number.");
       return;
@@ -92,15 +94,17 @@ telegram.on("text", (msg) => {
     adminCheckClass(msg, moduleCode, inputClassNo);
   } else if (shouldMarkAttendance(msg)) {
     // Mark attendance action
+    // Format: CS2040/LAB9/student-matric-number/token
+    // Format: CS1231S/TUT3/student-matric-number/token
     const values = msg.text.split("/");
     if (values.length !== 4) {
       sendMessage(msg, "Wrong format! Type /help for more information.");
       return;
     }
-    const moduleCode = values[0];
-    const inputClassNo = values[1];
-    const studentNo = values[2];
-    const inputToken = values[3];
+    const moduleCode = values[0].toUpperCase();
+    const inputClassNo = values[1].toUpperCase();
+    const studentNo = values[2].toUpperCase();
+    const inputToken = values[3].toUpperCase();
     if (!validCourses.has(moduleCode.toUpperCase())) {
       console.log(validCourses.has(moduleCode));
       console.log(validCourses);
@@ -114,7 +118,7 @@ telegram.on("text", (msg) => {
 
     markAttendance(msg, moduleCode, inputClassNo, studentNo, inputToken);
   } else {
-    sendMessage(msg, "Wrong");
+    sendMessage(msg, "Wrong format");
   }
 });
 
@@ -135,7 +139,7 @@ function shouldCheckClass(msg) {
 }
 
 function shouldMarkAttendance(msg) {
-    // Module code regex = \w{2}\d{4}\/
+    // Module code regex = \w{2}\d{4}\w?\/
     // Class no regex = \w{3}\d\/
     // student number regex = A\\d{7}\w\/
     // token = \w+
